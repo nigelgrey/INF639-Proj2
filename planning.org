@@ -1,0 +1,69 @@
+#+TITLE: Project 2 planning
+* Questions
+- Do we want to also allow for User Creation with setup.
+* Image
+[[file:./PWMNGR.png][Password manager]]
+* Database
+- Takes pufed hashes, looks up username, looks if password in entry, returns.
+* Server
+ - Gets request from client
+ - Hashes username and password separately
+ - Xor hashes
+ - hash xored hashes.
+ - Asks puf for location data for hashes - work as new hashes
+ - Ask database for hashes
+ - Tell client of results
+
+* Client
+- Asks user for info (or parses from command line)
+- Opens socket to server requesting auth, sending username/password
+- Waits for auth
+- Tells user if successful
+* PUF
+- Accepts a location
+- Returns bits
+* Protocol
+#+BEGIN_SRC plantuml :file ./protocol.png
+ 
+  @startuml
+  header Communication Protocol
+
+  actor Client
+  entity Server
+  database Database
+
+  Client -> Server: Authenticate (username, password)
+  activate Server
+          Server -> PUF: Lookup locations
+          activate PUF
+                  Server <- PUF: Bits
+          deactivate PUF
+          Server -> Database: (Location, hashed_password)
+          activate Database
+                  Server <- Database: Found?
+          deactivate Database
+          Client <- Server: Success/Fail
+  deactivate Server
+  @enduml
+  #+END_SRC
+
+#+RESULTS:
+[[file:./protocol.png]]
+
+#+BEGIN_SRC plantuml :file ./server.png
+  @startuml
+  actor Client
+  node "Server" {
+          Client-->[User x]
+          Client-->[Password x]
+          [User x]-->(xor)
+          [Password x]-->(xor)
+          (xor)-->[Hash function]
+          [Password x]-->[Hash function]
+  }
+  @enduml
+#+END_SRC
+
+  #+RESULTS:
+[[./server.png]]
+  
