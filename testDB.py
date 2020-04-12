@@ -1,30 +1,54 @@
 #!/usr/bin/env python3
 
-import sqlite3
+import sqlite3 as lite
 
-conn = sqlite3.connect('pwmngr.db')
-conn.row_factory = sqlite3.Row
+DATABASE_NAME = 'pwmngr.db'
+conn = lite.connect(DATABASE_NAME)
 c = conn.cursor()
 
-# Create table
-c.execute('''CREATE TABLE DB
-([Addr] integer, [Ch] integer)''')
+def createTable():
+    c.execute('''CREATE TABLE IF NOT EXISTS USERS (login TEXT PRIMARY KEY, password TEXT)''')
 
-for t in [(0x12, 0xab),
-          (0x34, 0xcd)
-         ]:
-    c.execute('INSERT INTO DB VALUES(?, ?)', t)
+def createUser(username, password):
+    if not duplicateUser(user):
+        c.execute('INSERT INTO USERS (login, password) values (?, ?)', (username, password))
+        print("User created successfully")
+    else:
+        print("Duplicate user")
 
+def getUsers():
+    result = c.execute("SELECT login, password from USERS")
 
-# Commit changes
+    for row in result:
+        print("username = {}\npassword = {}".format(row[0], row[1]))
+
+def getUser(username):
+    result = c.execute("SELECT * FROM USERS WHERE login = ?", (username, ))
+    return result.fetchone()
+
+def getPassword(username):
+    user = getUser(username)
+    if user != None:
+        return user[1]
+    return None
+
+def duplicateUser(username):
+    result = getUser(username)
+    return result != None
+
+createTable()
+
+user = "ng474"
+pw = 1234
+
+createUser(user, pw)
+
+user = "arty"
+pw = 1234
+
+createUser(user, pw)
+
+getUsers()
+
 conn.commit()
-
-c.execute('SELECT * FROM DB')
-rows = c.fetchall()
-
-for row in rows:
-    print("Addr: {}\nCh: {}\n".format(row['Addr'], row['Ch']))
-
-conn.commit()
-
-c.close()
+conn.close()
