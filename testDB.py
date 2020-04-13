@@ -27,42 +27,36 @@ def createUser(username, password):
 def getUsers():
     try:
         result = c.execute("SELECT login, password from USERS")
+        for row in result:
+            print("username = {}\npassword = {}".format(row[0], row[1]))
     except lite.error as msg:
         print("Get users failed. Error: " + str(msg))
         sys.exit()
 
-    finally:
-        for row in result:
-            print("username = {}\npassword = {}".format(row[0], row[1]))
-
 def getUser(username):
     try:
         result = c.execute("SELECT * FROM USERS WHERE login = ?", (username, ))
+        return result.fetchone()
     except lite.error as msg:
         print("Get user failed. Error: " + str(msg))
         sys.exit()
 
-    return result.fetchone()
-
 def getPassword(username):
     try:
         user = getUser(username)
-    except lite.error as msg:
-        print("Get password failed. Error: " + str(msg))
-
-    finally:
         if user != None:
             return user[1]
-
-    return None
+        return None
+    except lite.error as msg:
+        print("Get password failed. Error: " + str(msg))
 
 def duplicateUser(username):
     try:
         result = getUser(username)
+        return result != None
     except lite.error as msg:
         print("Duplicate check failed. Error: " + str(msg))
 
-    return result != None
 
 createTable()
 
