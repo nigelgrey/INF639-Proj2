@@ -57,20 +57,20 @@ def duplicateUser(username):
     except lite.error as msg:
         print("Duplicate check failed. Error: " + str(msg))
 
+if __name__ == "__main__":
+	createTable()
 
-createTable()
+	user = "ng474"
+	pw = 1234
 
-user = "ng474"
-pw = 1234
+	createUser(user, pw)
 
-createUser(user, pw)
+	user = "arty"
+	pw = 1234
 
-user = "arty"
-pw = 1234
+	createUser(user, pw)
 
-createUser(user, pw)
+	getUsers()
 
-getUsers()
-
-conn.commit()
-conn.close()
+	conn.commit()
+	conn.close()
