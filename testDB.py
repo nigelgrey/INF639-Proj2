@@ -2,60 +2,77 @@
 
 import sqlite3 as lite
 
-DATABASE_NAME = 'pwmngr.db'
-conn = lite.connect(DATABASE_NAME)
-c = conn.cursor()
+class Database:
 
-def createTable():
-    try:
-        c.execute('''CREATE TABLE IF NOT EXISTS USERS (login TEXT PRIMARY KEY, password TEXT)''')
-    except lite.error as msg:
-        print("Create table failed. Error: " + str(msg))
-        sys.exit()
+	def __init__(self):
+		DATABASE_NAME = 'pwmngr.db'
+		self.conn = lite.connect(DATABASE_NAME)
+		self.c = self.conn.cursor()
+		self.closed = False
 
-def createUser(username, password):
-    try:
-        if not duplicateUser(user):
-            c.execute('INSERT INTO USERS (login, password) values (?, ?)', (username, password))
-            print("User created successfully")
-        else:
-            print("Duplicate user")
-    except lite.error as msg:
-        print("Create user failed. Error: " + str(msg))
-        sys.exit()
+	def __del__(self):
+		self.close()
 
-def getUsers():
-    try:
-        result = c.execute("SELECT login, password from USERS")
-        for row in result:
-            print("username = {}\npassword = {}".format(row[0], row[1]))
-    except lite.error as msg:
-        print("Get users failed. Error: " + str(msg))
-        sys.exit()
+	def createTable(self):
+		try:
+			self.c.execute('''CREATE TABLE IF NOT EXISTS USERS (login TEXT PRIMARY KEY, password TEXT)''')
+		except lite.error as msg:
+			print("Create table failed. Error: " + str(msg))
+			sys.exit()
 
-def getUser(username):
-    try:
-        result = c.execute("SELECT * FROM USERS WHERE login = ?", (username, ))
-        return result.fetchone()
-    except lite.error as msg:
-        print("Get user failed. Error: " + str(msg))
-        sys.exit()
+	def createUser(self,sername, password):
+		try:
+			if not duplicateUser(user):
+				self.c.execute('INSERT INTO USERS (login, password) values (?, ?)', (username, password))
+				print("User created successfully")
+			else:
+				print("Duplicate user")
+		except lite.error as msg:
+			print("Create user failed. Error: " + str(msg))
+			sys.exit()
 
-def getPassword(username):
-    try:
-        user = getUser(username)
-        if user != None:
-            return user[1]
-        return None
-    except lite.error as msg:
-        print("Get password failed. Error: " + str(msg))
+	def getUsers(self):
+		try:
+			result = self.c.execute("SELECT login, password from USERS")
+			for row in result:
+				print("username = {}\npassword = {}".format(row[0], row[1]))
+		except lite.error as msg:
+			print("Get users failed. Error: " + str(msg))
+			sys.exit()
 
-def duplicateUser(username):
-    try:
-        result = getUser(username)
-        return result != None
-    except lite.error as msg:
-        print("Duplicate check failed. Error: " + str(msg))
+	def getUser(self,username):
+		try:
+			result = self.c.execute("SELECT * FROM USERS WHERE login = ?", (username, ))
+			return result.fetchone()
+		except lite.error as msg:
+			print("Get user failed. Error: " + str(msg))
+			sys.exit()
+
+	def getPassword(self,username):
+		try:
+			user = getUser(username)
+			if user != None:
+				return user[1]
+			return None
+		except lite.error as msg:
+			print("Get password failed. Error: " + str(msg))
+
+	def duplicateUser(self,username):
+		try:
+			result = getUser(username)
+			return result != None
+		except lite.error as msg:
+			print("Duplicate check failed. Error: " + str(msg))
+
+	def commit(self):
+		self.conn.commit()
+
+	def close(self):
+		if not self.closed:
+			self.conn.close()
+			c = None
+			conn = None
+			self.closed = True
 
 if __name__ == "__main__":
 	createTable()
