@@ -6,22 +6,18 @@ import sys
 import hashlib
 import time
 
-key_size = 100
-max_rbc = 5
+HOST = ''
+PORT = 8888
+FILE = "/tmp/inf-test"
+key_size = 128
+bind_arg = FILE
+# bind_arg = ((host,port))
 
-def createSocket():
-	HOST = ''
-	PORT = 8888
-	FILE = "/tmp/inf-test"
-
-	bind_arg = FILE
-	# bind_arg = ((host,port))
-
-
+def createSocket(bind_args):
     s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 
     try:
-        s.bind(bind_arg)
+        s.bind(bind_args)
     except socket.error as msg:
         print('Bind failed. Error Code : ' + str(msg))
         sys.exit()
@@ -52,7 +48,7 @@ def lookupPufHashes(hash_data):
 def lookupDatabase(puffed_hashes):
     pass
 
-s = createSocket()
+s = createSocket(bind_arg)
 print("Connected to server")
 
 try:
