@@ -5,6 +5,8 @@ import struct
 import sys
 import hashlib
 import time
+from testDB import Database
+from utils import ClientData, HashData
 
 HOST = ''
 PORT = 8888
@@ -13,8 +15,8 @@ key_size = 128
 bind_arg = FILE
 # bind_arg = ((host,port))
 
-def createSocket(bind_args):
-    s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+def createSocket(sock_type,bind_args):
+    s = socket.socket(sock_type, socket.SOCK_STREAM)
 
     try:
         s.bind(bind_args)
@@ -26,38 +28,40 @@ def createSocket(bind_args):
     return s
 
 
-def listenForClient(s):
+def listenForClient(s, database):
     conn, addr = s.accept()
     data = conn.recv(2000)
     client_data = pickle.loads(data)
-    hashed = hashClientData(client_data)
-    puffed_hashes = lookupPufHashes(hashed)
-    valid = lookupDatabase(puffed_hashes)
+    valid = validateCredentials(client_data, database)
+    conn.send(pickle.dumps(valid))
 
-def hashClientData(client_data):
-    hash_user = hash(client_data.username)
-    hash_pass = hash(client_data.password)
-    xored = hash_user ^ hash_pass
-    hash_xor = hash(xored)
-    hash_data = HashData(hash_xor, hash_pass)
-    return hash_data
+def validateCredentials(credientials, database):
+    hashed = hashClientData(credientials)
+    puffed_hashes = lookupPufHashes(hashed)
+    valid = lookupDatabase(puffed_hashes, database)
+    return valid
 
 def lookupPufHashes(hash_data):
-    pass
+    #  Temporary solution until PUF
+    return hash_data
 
-def lookupDatabase(puffed_hashes):
-    pass
+def lookupDatabase(puffed_hashes, database):
+    results = database.getUser(puffed_hashes.xored)
+    if results == None:
+        return False
+    return results[1] == puffed_hashes.password
 
-s = createSocket(bind_arg)
-print("Connected to server")
+if __name__ == "__main__":
+    database = Database()
+    s = createSocket(socket.AF_UNIX,bind_arg)
+    print("Connected to server")
 
-try:
-    while True:
-        conn, addr = s.accept()
-        data = conn.recv(2000)
-        data.decode()
+    try:
 
-finally:
-    s.shutdown(socket.SHUT_RDWR)
-    s.close()
-    s = None
+        listenForClient(s, database)
+    finally:
+        s.shutdown(socket.SHUT_RDWR)
+        s.close()
+        database.commit()
+        database.close()
+        s = None
