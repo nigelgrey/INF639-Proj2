@@ -34,11 +34,18 @@ def listenForClient(s, database):
     conn, addr = s.accept()
     data = conn.recv(1024)
     client_data = pickle.loads(data)
-    if client_data != "Exit":
+    mode = client_data[0]
+
+    client_data = client_data[1:]
+    if mode == "a":
         valid = validateCredentials(client_data, database)
         conn.send(pickle.dumps(valid))
+    elif mode == "c":
+        createUser(database,client_data)
     else:
         print('Exit.')
+
+    conn.close()
 
 def validateCredentials(credentials, database):
     print('Validating credentials with PUF...')
@@ -62,7 +69,11 @@ def hashClientData(credentials):
     hash_list= [chr(ord(a) ^ ord(b)) for a,b in zip(user_hash, pw_hash)]
     hash_data = "".join(hash_list)
 
-    return hash_data
+    m = hashlib.sha256()
+    m.update(hash_data.encode('utf-8'))
+    hashed_hash_data = m.hexdigest()
+
+    return hashed_hash_data
 
 def lookupPufHashes(hash_data):
     print('Challenging PUF...')
@@ -104,6 +115,28 @@ def lookupDatabase(credentials, database):
         print('User does not exist!')
         return False
     return results[1] == bits
+
+def createUser(database, credentials):
+    user, password = credentials
+
+    m = hashlib.sha256()
+    m.update(user.encode('utf-8'))
+    user_hash = m.hexdigest()
+
+    m = hashlib.sha256()
+    m.update(password.encode('utf-8'))
+    pw_hash = m.hexdigest()
+
+    hash_list= [chr(ord(a) ^ ord(b)) for a,b in zip(user_hash, pw_hash)]
+    hash_data = "".join(hash_list)
+
+    m = hashlib.sha256()
+    m.update(hash_data.encode('utf-8'))
+    hashed_hash_data = m.hexdigest()
+
+    puffed_pw = lookupPufHashes(hashed_hash_data)
+
+    database.createUser(user, puffed_pw)
 
 if __name__ == "__main__":
     database = Database()
