@@ -58,7 +58,7 @@ if __name__ == "__main__":
     s = createSocket(socket.AF_UNIX, bind_arg)
     try:
         # Asks user for info (or parses from command line)
-        action = input("(c)reate user or (a)uthenticate?")
+        action = input("(C)reate user or (A)uthenticate? ").lower()
         if action == 'c':
             user = input("Enter username: ")
             m = hashlib.sha256()
@@ -77,6 +77,8 @@ if __name__ == "__main__":
             # Tells user if successful
             createUser(database, (user, puffed_pw))
 
+            s.send(pickle.dumps("Exit"))
+
         elif action == 'a':
             user = input("Enter username: ")
             pw = getpass.getpass("Enter password: ")
@@ -87,7 +89,6 @@ if __name__ == "__main__":
             # Waits for auth
             auth = s.recv(1024)
             valid = pickle.loads(auth)
-            print("In client, valid returns: ", valid)
 
             # Tells user if successful
             if valid:
@@ -95,9 +96,8 @@ if __name__ == "__main__":
             else:
                 print("Authentication failed")
         else:
-            exit()
+            s.send(pickle.dumps("Exit"))
 
     finally:
-        s.shutdown(socket.SHUT_RDWR)
         s.close()
         s = None

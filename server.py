@@ -34,20 +34,22 @@ def listenForClient(s, database):
     conn, addr = s.accept()
     data = conn.recv(1024)
     client_data = pickle.loads(data)
-    print('client_data: ', client_data)
-    valid = validateCredentials(client_data, database)
-    conn.send(pickle.dumps(valid))
+    if client_data != "Exit":
+        valid = validateCredentials(client_data, database)
+        conn.send(pickle.dumps(valid))
+    else:
+        print('Exit.')
 
 def validateCredentials(credentials, database):
+    print('Validating credentials with PUF...')
     hashed = hashClientData(credentials)
-    print('hashed: ', hashed)
     puffed_hashes = lookupPufHashes(hashed)
-    print('puf: ', puffed_hashes)
     valid = lookupDatabase(credentials, database)
-    print("In server, valid returns: ", valid)
+    print('Validation: ', valid)
     return valid
 
 def hashClientData(credentials):
+    print('Hashing credentials...')
     user, pw = credentials
     m = hashlib.sha256()
     m.update(user.encode('utf-8'))
@@ -63,6 +65,7 @@ def hashClientData(credentials):
     return hash_data
 
 def lookupPufHashes(hash_data):
+    print('Challenging PUF...')
     data = hash_data.encode("utf-8").hex()
     data = int( data, 16 )
 
@@ -72,8 +75,12 @@ def lookupPufHashes(hash_data):
     bits = challengePuf('puf.txt', (col, row))
     return bits
 
+def exitServer(s):
+    # s.shutdown(socket.SHUT_RDWR)
+    s.close()
 
 def challengePuf(filename, loc):
+    print("PUF responding...")
     challenge = ""
     row = loc[0]
     col = loc[1]
@@ -89,13 +96,12 @@ def challengePuf(filename, loc):
     return challenge
 
 def lookupDatabase(credentials, database):
+    print("Comparing PUF response to database...")
     results = database.getUser(credentials[0])
-    print("Results: ", results)
     hash_data = hashClientData(credentials)
-    print("hashed: ", hash_data)
     bits = lookupPufHashes(hash_data)
-    print("puf: ", bits)
     if results == None:
+        print('User does not exist!')
         return False
     return results[1] == bits
 
@@ -108,8 +114,7 @@ if __name__ == "__main__":
         listenForClient(s, database)
 
     finally:
-        s.shutdown(socket.SHUT_RDWR)
-        s.close()
+        exitServer(s)
         database.commit()
         database.close()
         s = None
