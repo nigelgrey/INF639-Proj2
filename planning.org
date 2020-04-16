@@ -51,19 +51,31 @@
 [[file:./protocol.png]]
 
 #+BEGIN_SRC plantuml :file ./server.png
-  @startuml
-  actor Client
-  node "Server" {
-          Client-->[User x]
-          Client-->[Password x]
-          [User x]-->(xor)
-          [Password x]-->(xor)
-          (xor)-->[Hash function]
-          [Password x]-->[Hash function]
-  }
-  @enduml
+@startuml
+actor Client
+database Database
+entity PUF
+
+node "Server" {
+        Client-->[User x]
+        Client-->[Password x]
+        [User x]-->[User hash]
+        [Password x]-->[Password hash]
+        [User hash]-->(xor)
+        [Password hash]-->(xor)
+        (xor)-->[Hash]
+        [Hash]-->[Controller]
+        [Controller]->PUF: Ask for location data
+        [Controller]<-PUF: Challenge
+        [Controller]->Database: Challenge
+        Database->[Controller]: Result
+        [Controller]->Client: Authentication
+}
+@enduml
 #+END_SRC
 
   #+RESULTS:
-[[./server.png]]
-  
+  [[file:./server.png]]
+pos = 256bit hash mod 128^2  (1D pos inside 2D array)
+col = pos mod 128
+row = pos // 128

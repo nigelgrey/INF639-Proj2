@@ -1,0 +1,108 @@
+\documentclass[presentation]{beamer}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{grffile}
+\usepackage{multimedia}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{listings}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{textcomp}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\usetheme{default}
+\author{Jack Garrard \& Nigel Grey}
+\date{\today}
+\title{Password Manager aka Authentication Protocol}
+\begin{document}
+
+\maketitle
+\begin{frame}{Outline}
+  \tableofcontents
+\end{frame}
+\section{Password Manager Overview}
+\subsection{Introduction}
+\begin{frame}{Password Manager Overview}
+  \begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{protocol.png}
+    \caption{Communication Protocol}
+  \end{figure}
+\end{frame}
+\subsection{Server}
+\begin{frame}{Server-side}
+  \begin{enumerate}
+    \item Gets request from client
+      \pause
+    \item Hashes username and password separately
+      \pause
+    \item Xor hashes
+      \pause
+    \item Hash xored hashes
+      \pause
+    \item Asks puf for location data for hashes--work as new hashes
+      \pause
+    \item Ask database for hashes
+      \pause
+    \item Tell client lookup result
+  \end{enumerate}
+\end{frame}
+\begin{frame}{Server Component Diagram}
+  \begin{figure}[h]
+    \centering
+    \includegraphics[scale=0.3]{server.png}
+    \caption{Server Protocol}
+  \end{figure}
+\end{frame}
+\subsection{Client}
+\begin{frame}{Client-side}
+  \begin{enumerate}
+    \item Asks user for credentials
+      \pause
+    \item Opens socket to server requesting authorization
+      \pause
+    \item Sends username/password
+      \pause
+    \item Waits for authorization
+      \pause
+    \item Tells user if successful/unsuccessful
+  \end{enumerate}
+\end{frame}
+\subsection{Puf}
+\begin{frame}{Puf-side}
+  \begin{enumerate}
+    \item Accepts a location
+      \pause
+    \item Maps location to row, column address
+      \pause
+    \item Returns bits
+  \end{enumerate}
+\end{frame}
+\section{Results}
+\begin{frame}{Results}
+  \begin{itemize}
+      \item It works well!
+  \end{itemize}
+  \begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\textwidth]{serverOut.png}
+    \caption{Server-side Output }
+  \end{figure}
+  \begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\textwidth]{clientOut.png}
+    \caption{Client-side Output}
+  \end{figure}
+
+\end{frame}                   
+\section{Conclusion}
+\begin{frame}{Conclusion}
+  \begin{itemize}
+      \item Thank You! What questions do you have?
+      \end{itemize}
+\end{frame}
+\end{document}

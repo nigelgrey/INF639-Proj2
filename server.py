@@ -1,4 +1,6 @@
 import random
+import os
+import pickle
 import numpy as np
 import socket
 import struct
@@ -27,41 +29,125 @@ def createSocket(sock_type,bind_args):
     s.listen(10)
     return s
 
-
 def listenForClient(s, database):
+    print('In server, waiting for client')
     conn, addr = s.accept()
-    data = conn.recv(2000)
+    data = conn.recv(1024)
     client_data = pickle.loads(data)
-    valid = validateCredentials(client_data, database)
-    conn.send(pickle.dumps(valid))
+    mode = client_data[0]
 
-def validateCredentials(credientials, database):
-    hashed = hashClientData(credientials)
+    client_data = client_data[1:]
+    if mode == "a":
+        valid = validateCredentials(client_data, database)
+        conn.send(pickle.dumps(valid))
+    elif mode == "c":
+        createUser(database,client_data)
+    else:
+        print('Exit.')
+
+    conn.close()
+
+def validateCredentials(credentials, database):
+    print('Validating credentials with PUF...')
+    hashed = hashClientData(credentials)
     puffed_hashes = lookupPufHashes(hashed)
-    valid = lookupDatabase(puffed_hashes, database)
+    valid = lookupDatabase(credentials, database)
+    print('Validation: ', valid)
     return valid
 
-def lookupPufHashes(hash_data):
-    #  Temporary solution until PUF
-    return hash_data
+def hashClientData(credentials):
+    print('Hashing credentials...')
+    user, pw = credentials
+    m = hashlib.sha256()
+    m.update(user.encode('utf-8'))
+    user_hash = m.hexdigest()
 
-def lookupDatabase(puffed_hashes, database):
-    results = database.getUser(puffed_hashes.xored)
+    m = hashlib.sha256()
+    m.update(pw.encode('utf-8'))
+    pw_hash = m.hexdigest()
+
+    hash_list= [chr(ord(a) ^ ord(b)) for a,b in zip(user_hash, pw_hash)]
+    hash_data = "".join(hash_list)
+
+    m = hashlib.sha256()
+    m.update(hash_data.encode('utf-8'))
+    hashed_hash_data = m.hexdigest()
+
+    return hashed_hash_data
+
+def lookupPufHashes(hash_data):
+    print('Challenging PUF...')
+    data = hash_data.encode("utf-8").hex()
+    data = int( data, 16 )
+
+    pos = data % key_size**2
+    col = pos % key_size
+    row = pos // key_size
+    bits = challengePuf('puf.txt', (col, row))
+    return bits
+
+def exitServer(s):
+    # s.shutdown(socket.SHUT_RDWR)
+    s.close()
+
+def challengePuf(filename, loc):
+    print("PUF responding...")
+    challenge = ""
+    row = loc[0]
+    col = loc[1]
+    array = np.loadtxt(filename, dtype=np.bool)
+    for i in range(0, key_size):
+        challenge += str(array[row][col])
+        col += 1
+        if col >= key_size:
+            row += 1
+            col = 0
+        if row >= key_size:
+            row = 0
+    return challenge
+
+def lookupDatabase(credentials, database):
+    print("Comparing PUF response to database...")
+    results = database.getUser(credentials[0])
+    hash_data = hashClientData(credentials)
+    bits = lookupPufHashes(hash_data)
     if results == None:
+        print('User does not exist!')
         return False
-    return results[1] == puffed_hashes.password
+    return results[1] == bits
+
+def createUser(database, credentials):
+    user, password = credentials
+
+    m = hashlib.sha256()
+    m.update(user.encode('utf-8'))
+    user_hash = m.hexdigest()
+
+    m = hashlib.sha256()
+    m.update(password.encode('utf-8'))
+    pw_hash = m.hexdigest()
+
+    hash_list= [chr(ord(a) ^ ord(b)) for a,b in zip(user_hash, pw_hash)]
+    hash_data = "".join(hash_list)
+
+    m = hashlib.sha256()
+    m.update(hash_data.encode('utf-8'))
+    hashed_hash_data = m.hexdigest()
+
+    puffed_pw = lookupPufHashes(hashed_hash_data)
+
+    database.createUser(user, puffed_pw)
 
 if __name__ == "__main__":
     database = Database()
-    s = createSocket(socket.AF_UNIX,bind_arg)
+    s = createSocket(socket.AF_UNIX, bind_arg)
     print("Connected to server")
 
     try:
-
         listenForClient(s, database)
+
     finally:
-        s.shutdown(socket.SHUT_RDWR)
-        s.close()
+        exitServer(s)
         database.commit()
         database.close()
         s = None
