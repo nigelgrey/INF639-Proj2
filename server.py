@@ -34,67 +34,70 @@ def listenForClient(s, database):
     conn, addr = s.accept()
     data = conn.recv(1024)
     client_data = pickle.loads(data)
+    print('client_data: ', client_data)
     valid = validateCredentials(client_data, database)
     conn.send(pickle.dumps(valid))
 
 def validateCredentials(credentials, database):
     hashed = hashClientData(credentials)
+    print('hashed: ', hashed)
     puffed_hashes = lookupPufHashes(hashed)
-    valid = lookupDatabase(puffed_hashes, database)
+    print('puf: ', puffed_hashes)
+    valid = lookupDatabase(credentials, database)
+    print("In server, valid returns: ", valid)
     return valid
 
 def hashClientData(credentials):
-    return (1,0)
+    user, pw = credentials
+    m = hashlib.sha256()
+    m.update(user.encode('utf-8'))
+    user_hash = m.hexdigest()
+
+    m = hashlib.sha256()
+    m.update(pw.encode('utf-8'))
+    pw_hash = m.hexdigest()
+
+    hash_list= [chr(ord(a) ^ ord(b)) for a,b in zip(user_hash, pw_hash)]
+    hash_data = "".join(hash_list)
+
+    return hash_data
 
 def lookupPufHashes(hash_data):
-    server, puf= socket.socketpair()
-    pid = os.fork()
+    data = hash_data.encode("utf-8").hex()
+    data = int( data, 16 )
 
-    if pid:
-        print('In server, sending addr to puf')
-        puf.close()
-        pickled_data = pickle.dumps(hash_data)
-        server.sendall(pickled_data)
+    pos = data % key_size**2
+    col = pos % key_size
+    row = pos // key_size
+    bits = challengePuf('puf.txt', (col, row))
+    return bits
 
-        pickled_response = server.recv(1024)
-        response = pickle.loads(pickled_response)
-        print('Response from PUF: ', response)
-        server.close()
-    else:
-        print('In puf, waiting for challenge')
-        server.close()
-        pickled_addr = puf.recv(1024)
-        addr = pickle.loads(pickled_addr)
-        print('Address from parent: ', addr)
-        bits = challengePuf('puf.txt', addr)
-        pickled_bits = pickle.dumps(bits)
-        puf.sendall(pickled_bits)
-        puf.close()
 
 def challengePuf(filename, loc):
-    size = 128
     challenge = ""
     row = loc[0]
     col = loc[1]
     array = np.loadtxt(filename, dtype=np.bool)
-    for i in range(0, size):
+    for i in range(0, key_size):
         challenge += str(array[row][col])
         col += 1
-        if col >= size:
+        if col >= key_size:
             row += 1
             col = 0
-        if row >= size:
+        if row >= key_size:
             row = 0
-    m = hashlib.sha256()
-    m.update(challenge.encode('utf-8'))
-    hash_data = m.hexdigest()
-    return hash_data
+    return challenge
 
-def lookupDatabase(puffed_hashes, database):
-    results = database.getUser(puffed_hashes.xored)
+def lookupDatabase(credentials, database):
+    results = database.getUser(credentials[0])
+    print("Results: ", results)
+    hash_data = hashClientData(credentials)
+    print("hashed: ", hash_data)
+    bits = lookupPufHashes(hash_data)
+    print("puf: ", bits)
     if results == None:
         return False
-    return results[1] == puffed_hashes.password
+    return results[1] == bits
 
 if __name__ == "__main__":
     database = Database()
@@ -103,9 +106,7 @@ if __name__ == "__main__":
 
     try:
         listenForClient(s, database)
-        addr = (1,1)
-        lookupPufHashes(addr)
-       
+
     finally:
         s.shutdown(socket.SHUT_RDWR)
         s.close()

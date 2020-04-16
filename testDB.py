@@ -20,9 +20,9 @@ class Database:
 			print("Create table failed. Error: " + str(msg))
 			sys.exit()
 
-	def createUser(self,sername, password):
+	def createUser(self, username, password):
 		try:
-			if not duplicateUser(user):
+			if not self.duplicateUser(username):
 				self.c.execute('INSERT INTO USERS (login, password) values (?, ?)', (username, password))
 				print("User created successfully")
 			else:
@@ -50,7 +50,7 @@ class Database:
 
 	def getPassword(self,username):
 		try:
-			user = getUser(username)
+			user = self.getUser(username)
 			if user != None:
 				return user[1]
 			return None
@@ -59,7 +59,7 @@ class Database:
 
 	def duplicateUser(self,username):
 		try:
-			result = getUser(username)
+			result = self.getUser(username)
 			return result != None
 		except lite.error as msg:
 			print("Duplicate check failed. Error: " + str(msg))
